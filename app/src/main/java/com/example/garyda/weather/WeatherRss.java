@@ -2,8 +2,10 @@ package com.example.garyda.weather;
 
 //用SAX解析Rss的Xml
 public class WeatherRss {
-    private String title,item,description,pubDate;
-
+    private String title="hahaha";
+    private String item = null;
+    private String description = null;
+    private String pubDate = null ;
     public void setTitle(String title)
     {
         this.title = title;
@@ -20,9 +22,9 @@ public class WeatherRss {
     {
         this.pubDate = pubDate;
     }
-    /被todayweatherfragment call
-    public void getTitle()
+    //被todayweatherfragment call
+    public String getTitle()
     {
-        this.title = title;
+        return title;
     }
 }

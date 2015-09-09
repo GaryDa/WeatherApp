@@ -8,6 +8,7 @@ import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -15,36 +16,57 @@ import android.widget.Button;
 import android.widget.Spinner;
 import android.widget.TextView;
 
-public class TodayWeatherFragment extends Fragment{
-    private TextView TodayTxv;
+import org.xml.sax.SAXException;
+
+import java.io.IOException;
+import java.lang.ref.WeakReference;
+
+import javax.xml.parsers.ParserConfigurationException;
+
+public class TodayWeatherFragment extends Fragment implements OnClickListener{
+    private static TextView ResultTxv;
+    private Button CitySubmit;
     //Rss資料的網址
     String trgUrl;
     //新聞資料的物件陣列
-    WeatherRss[] Arr_RssWeather;
+    static WeatherRss[] Arr_RssWeather;
     //要更新時提示的訊息
     protected static final int REFRESH_DATA = 0x00000001;
-    private Button getData_btn;
     //城市下拉式清單用 spinner的 ArrayAdapter、存放城市array的陣列
     private ArrayAdapter<String>citylist;
     private String[]CityNameArray;
     private Spinner Cityspi;
-    Handler mHandler = new Handler()
+
+    static class MsgHandler extends Handler
     {
+        private WeakReference<Fragment>mFragment;
+        public MsgHandler(Fragment mFragment)
+        {
+            this.mFragment = new WeakReference<Fragment>(mFragment);
+        }
         public void handleMessage(Message msg)
         {
-            switch (msg.what)
-            {
+            Fragment fra = mFragment.get();
+
+
+                switch (msg.what)
+                {
                 //更新資料，將rss的標題用迴圈印出
                 case REFRESH_DATA:
-                    TodayTxv.setText("");
-                    for (int i = 0;i<Arr_RssWeather.length;i++)
-                    {
-                        TodayTxv.append(Arr_RssWeather[i].getTitle()+"\n");
-                    }
+                ResultTxv.setText("");
+                for (int i = 0; i < Arr_RssWeather.length; i++)
+                {
+                    ResultTxv.append(Arr_RssWeather[i].getTitle() + "\n");
+                }
                 break;
-            }
+
+                }
+
+
         }
-    };
+    }
+    private MsgHandler mHandler = new MsgHandler(this);
+
     @Override
     public void onAttach(Activity activity) {
         super.onAttach(activity);
@@ -64,7 +86,7 @@ public class TodayWeatherFragment extends Fragment{
         Log.d("TAG", "TodayWeatherFragment onActivityCreated");
         //初始化view
         iniviews();
-        TodayTxv.setText("Today");
+
         //取得array.xml裡的CityName陣列
         CityNameArray = getResources().getStringArray(R.array.CityName);
         //將CityName陣列用ArrayAdapter顯示在spinner上
@@ -89,8 +111,59 @@ public class TodayWeatherFragment extends Fragment{
 
     private void iniviews() {
         //初始化view
-        TodayTxv = (TextView)this.getView().findViewById(R.id.TodayWeathertxv);
-        Cityspi = (Spinner)this.getView().findViewById(R.id.Cityspinner);
 
+        ResultTxv = (TextView)this.getView().findViewById(R.id.resultTxv);
+        Cityspi = (Spinner)this.getView().findViewById(R.id.Cityspinner);
+        CitySubmit = (Button)this.getView().findViewById(R.id.CitySubmit);
+        CitySubmit.setOnClickListener(this);
+    }
+    @Override
+    public void onClick(View v)
+    {
+        if (v == CitySubmit)
+        {
+            trgUrl ="www.cwb.gov.tw/rss/forecast/36_01.xml";
+            new Thread()
+            {
+                public void run(){
+                Arr_RssWeather = getWeather();
+                if (Arr_RssWeather != null)
+                {
+                    mHandler.sendEmptyMessage(REFRESH_DATA);
+                }}
+            }.start();
+        }
+    }
+
+    public WeatherRss[]getWeather()
+    {
+        if (trgUrl==null)
+            return null;
+        try
+        {
+            SampleXmlParser dataXmlParser = new SampleXmlParser(
+                    new WeatherXmlParsingHandler());
+            Object[]data = (Object[])dataXmlParser.getData(trgUrl);
+            if (data != null)
+            {
+                if (data[0]instanceof WeatherRss[])
+                {
+                    return (WeatherRss[])data[0];
+                }
+            }
+        }
+        catch (SAXException e)
+        {
+            e.printStackTrace();
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+        }
+        catch (ParserConfigurationException e)
+        {
+            e.printStackTrace();
+        }
+        return null;
     }
 }
